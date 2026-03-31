@@ -17,6 +17,7 @@ from src.api.fandom import router as fandom_router
 from src.api.plugins import router as plugins_router
 from src.api.export_import import router as export_import_router
 from src.api.sensitive_words import router as sensitive_words_router
+from src.api.foreshadowings import router as foreshadowings_router
 
 api_router = APIRouter()
 
@@ -64,5 +65,8 @@ api_router.include_router(fandom_router, prefix="/projects/{project_id}/fandom",
 
 # 敏感词管理
 api_router.include_router(sensitive_words_router, prefix="/projects/{project_id}/sensitive-words", tags=["sensitive_words"])
+
+# 伏笔管理
+api_router.include_router(foreshadowings_router, prefix="/projects/{project_id}/foreshadowings", tags=["foreshadowings"])
 
 __all__ = ["api_router"]

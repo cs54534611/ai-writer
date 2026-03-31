@@ -109,6 +109,9 @@ export function useTriggerFullReview() {
       qc.invalidateQueries({ queryKey: ['chapters', projectId, chapterId] })
       qc.invalidateQueries({ queryKey: ['review', projectId, chapterId] })
     },
+    onError: (err, { projectId, chapterId }) => {
+      console.error(`[useTriggerFullReview] 触发完整审查失败:`, err)
+    },
   })
 }
 
