@@ -1,0 +1,8 @@
+{
+  "id": "hello_world",
+  "name": "Hello World 示例插件",
+  "version": "1.0.0",
+  "description": "一个简单的示例插件，展示插件系统的基本用法",
+  "author": "AI Writer Team",
+  "hooks": ["on_chapter_complete", "on_project_create"]
+}
