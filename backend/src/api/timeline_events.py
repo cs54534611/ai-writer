@@ -9,6 +9,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.database import get_db_manager
 from src.models.timeline_event import TimelineEvent
+from src.services.llm import get_llm_service
+from src.services.timeline_generator import TimelineGenerator
 
 router = APIRouter()
 
@@ -182,4 +184,5 @@ async def delete_timeline_event(
     await db.flush()
 
 
-from sqlmodel import SQLModel  # 确保 SQLModel 可用
+from src.services.llm import get_llm_service
+from src.services.timeline_generator import TimelineGenerator

@@ -182,6 +182,39 @@ async def export_chapter_json(
     return JSONResponse(content=result)
 
 
+@router.get("/chapters/{chapter_id}/export-docx")
+async def export_chapter_docx(
+    chapter_id: Annotated[str, Path(description="章节ID")],
+):
+    """
+    导出单个章节为 Word 文档格式
+    """
+    service = get_export_import_service()
+    
+    try:
+        docx_data = await service.export_chapter_as_docx(chapter_id)
+        
+        # 获取章节标题用于文件名
+        chapter = await service._get_chapter(chapter_id)
+        title = chapter.get("title", "无标题") if chapter else "章节"
+        # 清理文件名中的非法字符
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).strip()
+        filename = f"{safe_title}.docx" if safe_title else f"{chapter_id}.docx"
+        
+        return StreamingResponse(
+            iter([docx_data]),
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+            },
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "error": str(e)},
+        )
+
+
 @router.get("/projects/{project_id}/world-settings/export")
 async def export_world_settings(
     project_id: Annotated[str, Path(description="项目ID")],

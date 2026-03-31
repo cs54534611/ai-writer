@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useLocations } from '../hooks/useLocations'
 import type { Location } from '../types'
+import Rough from 'roughjs'
 
 interface LocationWithChildren extends Location {
   children: LocationWithChildren[]
@@ -31,6 +32,141 @@ const TERRAIN_ICONS: Record<string, string> = {
   'cave': '🕳️',
   'sky': '☁️',
   'abyss': '🌀',
+}
+
+// 层级颜色配置
+const LAYER_COLORS: Record<string, { stroke: string; fill: string; bg: string }> = {
+  'celestial': { stroke: '#3b82f6', fill: '#93c5fd', bg: 'rgba(59, 130, 246, 0.1)' },
+  'material': { stroke: '#22c55e', fill: '#86efac', bg: 'rgba(34, 197, 94, 0.1)' },
+  'underworld': { stroke: '#6b7280', fill: '#9ca3af', bg: 'rgba(107, 114, 128, 0.1)' },
+  'realm': { stroke: '#a855f7', fill: '#d8b4fe', bg: 'rgba(168, 85, 247, 0.1)' },
+  'void': { stroke: '#1f2937', fill: '#4b5563', bg: 'rgba(31, 41, 55, 0.1)' },
+}
+
+// 手绘风格地图组件
+function RoughMap({ locations }: { locations: Location[] }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    if (!canvasRef.current || !locations || locations.length === 0) return
+
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const rc = Rough.canvas(canvas)
+
+    // 设置画布大小
+    const width = canvas.width
+    const height = canvas.height
+
+    // 清除画布
+    ctx.clearRect(0, 0, width, height)
+
+    // 收集所有连接关系（基于parent_id）
+    const connections: { from: Location; to: Location }[] = []
+    locations.forEach(loc => {
+      if (loc.parent_id) {
+        const parent = locations.find(l => l.id === loc.parent_id)
+        if (parent) {
+          connections.push({ from: parent, to: loc })
+        }
+      }
+    })
+
+    // 计算位置映射（将坐标转换为画布坐标）
+    const layerOrder = ['celestial', 'material', 'underworld', 'realm', 'void']
+
+    // 归一化坐标
+    const layerLocs: Record<string, Location[]> = {}
+    locations.forEach(loc => {
+      const layer = loc.layer || 'material'
+      if (!layerLocs[layer]) layerLocs[layer] = []
+      layerLocs[layer].push(loc)
+    })
+
+    // 计算每个layer的位置范围
+    const layerY: Record<string, number> = {}
+    let currentY = 60
+    layerOrder.forEach(layer => {
+      layerY[layer] = currentY
+      currentY += 120
+    })
+
+    // 为每个layer内的位置计算x坐标
+    const locPositions: Record<string, { x: number; y: number }> = {}
+    Object.entries(layerLocs).forEach(([layer, locs]) => {
+      const layerYPos = layerY[layer] || 120
+      locs.forEach((loc, idx) => {
+        const xOffset = 100 + (idx % 4) * 150
+        const yOffset = layerYPos + Math.floor(idx / 4) * 80 + 40
+        locPositions[loc.id] = { x: xOffset, y: yOffset }
+      })
+    })
+
+    // 绘制连接线
+    connections.forEach(({ from, to }) => {
+      const fromPos = locPositions[from.id]
+      const toPos = locPositions[to.id]
+      if (fromPos && toPos) {
+        rc.line(fromPos.x, fromPos.y, toPos.x, toPos.y, {
+          stroke: '#9ca3af',
+          strokeWidth: 1.5,
+          bowing: 1,
+        })
+      }
+    })
+
+    // 绘制每个地点
+    locations.forEach(loc => {
+      const pos = locPositions[loc.id]
+      if (!pos) return
+
+      const colors = LAYER_COLORS[loc.layer] || LAYER_COLORS['material']
+      const radius = 25
+
+      // 绘制手绘风格圆
+      rc.circle(pos.x, pos.y, radius * 2, {
+        stroke: colors.stroke,
+        fill: colors.fill,
+        fillStyle: 'solid',
+        strokeWidth: 2,
+      })
+
+      // 绘制地点名称
+      ctx.font = '12px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillStyle = '#374151'
+      ctx.fillText(loc.name.slice(0, 6), pos.x, pos.y + 4)
+    })
+
+  }, [locations])
+
+  return (
+    <div className="mt-6 bg-gray-50 rounded-lg p-4 border">
+      <h3 className="text-sm font-medium text-gray-600 mb-3">📍 世界地图概览</h3>
+      <canvas
+        ref={canvasRef}
+        width={650}
+        height={500}
+        className="w-full bg-white/50 rounded border"
+      />
+      <div className="flex gap-4 mt-3 text-xs">
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-blue-400"></span> 天界
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-green-400"></span> 人界
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-gray-400"></span> 冥界
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-purple-400"></span> 秘境
+        </span>
+      </div>
+    </div>
+  )
 }
 
 interface LocationFormData {
@@ -212,9 +348,15 @@ export default function LocationsPage() {
           暂无地点，点击上方按钮添加第一个地点
         </div>
       ) : (
-        <div className="space-y-1">
-          {locationTree.map(location => renderLocation(location))}
-        </div>
+        <>
+          <div className="space-y-1">
+            {locationTree.map(location => renderLocation(location))}
+          </div>
+          {/* 手绘风格地图 */}
+          {locations && locations.length > 0 && (
+            <RoughMap locations={locations} />
+          )}
+        </>
       )}
 
       {/* 创建/编辑模态框 */}

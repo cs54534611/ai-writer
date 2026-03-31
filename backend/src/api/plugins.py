@@ -15,6 +15,45 @@ from src.services.plugin import get_plugin_manager, PluginResult
 router = APIRouter()
 
 
+# 插件市场内置推荐插件
+MARKET_PLUGINS = [
+    {"id": "word-count-goal", "name": "字数目标提醒", "description": "每日/每周字数目标，到期提醒", "author": "AIWriter Team", "downloads": 0, "rating": 5.0, "tags": ["写作", "目标"]},
+    {"id": "daily-backup", "name": "每日备份", "description": "每日自动备份项目数据", "author": "AIWriter Team", "downloads": 0, "rating": 5.0, "tags": ["备份", "安全"]},
+    {"id": "pinyin-helper", "name": "拼音助手", "description": "自动为角色名添加拼音注音", "author": "Community", "downloads": 0, "rating": 4.5, "tags": ["中文", "工具"]},
+    {"id": "writing-stats", "name": "写作统计", "description": "详细写作数据统计和可视化", "author": "Community", "downloads": 0, "rating": 4.8, "tags": ["统计", "仪表盘"]},
+]
+
+
+@router.get("/market")
+async def get_plugin_market():
+    """获取插件市场列表（内置推荐插件）"""
+    return MARKET_PLUGINS
+
+
+@router.post("/{plugin_id}/install")
+async def install_market_plugin(
+    plugin_id: Annotated[str, Path(description="插件ID")],
+):
+    """从市场安装插件"""
+    # 检查插件是否在市场中存在
+    plugin = next((p for p in MARKET_PLUGINS if p["id"] == plugin_id), None)
+    if not plugin:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Plugin {plugin_id} not found in market",
+        )
+    
+    manager = get_plugin_manager()
+    # 启用插件（市场插件默认是内置的，只需启用即可）
+    success = manager.enable_plugin(plugin_id)
+    
+    return {
+        "success": success,
+        "plugin_id": plugin_id,
+        "message": f"插件 {plugin['name']} 安装成功" if success else f"插件 {plugin['name']} 安装失败",
+    }
+
+
 @router.get("/", response_model=list[PluginSchema])
 async def list_plugins() -> list[PluginSchema]:
     """

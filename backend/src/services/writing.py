@@ -1,8 +1,18 @@
 """AI 写作服务 - 续写/扩写/改写/描写增强/即时反馈"""
 
+from enum import Enum
 from typing import AsyncIterator, Optional
 
 from src.services.llm import BaseLLMService
+
+
+class WritingStyle(str, Enum):
+    """写作风格枚举"""
+    NORMAL = "normal"                      # 普通风格
+    DIALOGUE_HEAVY = "dialogue_heavy"      # 对话稠密
+    DESCRIPTION_HEAVY = "description_heavy"  # 描写稠密
+    XIUXIAN = "xiuxian"                    # 修仙风格
+    BATTLE = "battle"                      # 战斗风格
 
 
 class WritingService:
@@ -107,7 +117,7 @@ class WritingService:
 
 请直接输出改写后的内容："""
 
-    # 描写增强提示词
+    # 描写增强提示词（增强版 - 含感官细节+网文风格）
     ENHANCE_DESCRIPTION_TEMPLATE = """你是一位专业的小说作家。请对以下内容进行感官描写增强。
 
 原文：
@@ -115,8 +125,10 @@ class WritingService:
 
 增强要求：
 - 着重增强以下感官描写：{senses}
+- 请补充感官细节，添加比喻和拟人
 - 增加场景的氛围感和沉浸感
 - 通过感官细节让读者身临其境
+- {style_hint}
 - 保持原文的核心意思不变
 - 禁止输出任何非故事内容
 
@@ -170,15 +182,15 @@ class WritingService:
         self.llm = llm
 
     def _build_continue_prompt(
-        self, context: str, style: str = "default"
+        self, context: str, style: WritingStyle = WritingStyle.NORMAL
     ) -> str:
         """构建续写提示词"""
         style_map = {
-            "default": "叙事流畅，节奏适中",
-            "dialog_heavy": "对话丰富，人物互动频繁",
-            "desc_heavy": "描写细腻，环境氛围浓厚",
-            "fastpaced": "节奏紧凑，情节推进快",
-            "slowpaced": "节奏舒缓，情感细腻",
+            WritingStyle.NORMAL: "叙事流畅，节奏适中",
+            WritingStyle.DIALOGUE_HEAVY: "对话丰富，人物互动频繁，人物对白占主要篇幅",
+            WritingStyle.DESCRIPTION_HEAVY: "描写细腻，环境氛围浓厚，心理和场景描写丰富",
+            WritingStyle.XIUXIAN: "修仙玄幻风格，灵气波动、法力运转、打斗描写精彩",
+            WritingStyle.BATTLE: "战斗风格，动作场面激烈，战斗细节丰富",
         }
         style_desc = style_map.get(style, "叙事流畅，节奏适中")
         return self.CONTINUE_TEMPLATE.format(context=context, style=style_desc)
@@ -202,7 +214,7 @@ class WritingService:
     async def continue_writing(
         self,
         context: str,
-        style: str = "default",
+        style: WritingStyle = WritingStyle.NORMAL,
         num_versions: int = 1,
         project_id: Optional[str] = None,
         use_rag: bool = True,
@@ -212,7 +224,7 @@ class WritingService:
 
         Args:
             context: 前文内容
-            style: 续写风格 (default/dialog_heavy/desc_heavy/fastpaced/slowpaced)
+            style: 续写风格 (WritingStyle 枚举)
             num_versions: 生成版本数量 (1-3)
             project_id: 项目ID（用于RAG检索）
             use_rag: 是否使用RAG检索相关章节片段作为上下文
@@ -352,6 +364,7 @@ class WritingService:
         self,
         content: str,
         mode: str = "polish",
+        style: WritingStyle = WritingStyle.NORMAL,
         **kwargs,
     ) -> str:
         """
@@ -360,15 +373,30 @@ class WritingService:
         Args:
             content: 要改写的内容
             mode: 改写模式 (polish/alternative/tone)
+            style: 写作风格 (WritingStyle 枚举)
             **kwargs: 额外参数，如 tone 用于 tone 模式
 
         Returns:
             str: 改写后的内容
         """
+        # 风格增强提示
+        style_hint_map = {
+            WritingStyle.NORMAL: "",
+            WritingStyle.DIALOGUE_HEAVY: "改写时增加对话密度，让人物互动更加频繁",
+            WritingStyle.DESCRIPTION_HEAVY: "改写时增加环境描写和细节刻画",
+            WritingStyle.XIUXIAN: "改写时融入修仙/玄幻元素，如灵气波动、法力运转等",
+            WritingStyle.BATTLE: "改写时强化战斗场面，增加招式和动作描写",
+        }
+        style_hint = style_hint_map.get(style, "")
+
         if mode == "polish":
             prompt = self.REWRITE_POLISH_TEMPLATE.format(content=content)
+            if style_hint:
+                prompt = prompt.replace("禁止输出任何非故事内容", style_hint + "\n禁止输出任何非故事内容")
         elif mode == "alternative":
             prompt = self.REWRITE_ALTERNATIVE_TEMPLATE.format(content=content)
+            if style_hint:
+                prompt = prompt.replace("禁止输出任何非故事内容", style_hint + "\n禁止输出任何非故事内容")
         elif mode == "tone":
             tone = kwargs.get("tone", "轻松幽默")
             prompt = self.REWRITE_TONE_TEMPLATE.format(
@@ -385,6 +413,7 @@ class WritingService:
         self,
         content: str,
         senses: list[str] = None,
+        style: WritingStyle = WritingStyle.NORMAL,
     ) -> str:
         """
         AI 描写增强 - 增强感官描写
@@ -393,6 +422,7 @@ class WritingService:
             content: 要增强的内容
             senses: 要增强的感官列表 (visual/auditory/olfactory/tactile/smell/taste)
                     默认全部增强
+            style: 写作风格 (WritingStyle 枚举)
 
         Returns:
             str: 增强描写后的内容
@@ -413,9 +443,20 @@ class WritingService:
                 sense_map.get(s, s) for s in senses
             )
 
+        # 风格提示
+        style_hint_map = {
+            WritingStyle.NORMAL: "",
+            WritingStyle.DIALOGUE_HEAVY: "适当增加对话和人物互动",
+            WritingStyle.DESCRIPTION_HEAVY: "增加环境描写和细节刻画",
+            WritingStyle.XIUXIAN: "如涉及修仙/玄幻元素，请加入灵气波动、法力运转、境界描写等专属细节",
+            WritingStyle.BATTLE: "如涉及战斗场景，请加入招式描写、真气流动、战斗音效等",
+        }
+        style_hint = style_hint_map.get(style, "")
+
         prompt = self.ENHANCE_DESCRIPTION_TEMPLATE.format(
             content=content,
             senses=senses_text,
+            style_hint=style_hint,
         )
         return (await self.llm.generate(prompt)).strip()
 

@@ -16,6 +16,8 @@ from src.schemas.outline import (
     OutlineNodeTree,
     OutlineNodeUpdate,
 )
+from src.services.llm import get_llm_service
+from src.services.outline_optimizer import OutlineOptimizer
 
 
 router = APIRouter()
@@ -221,3 +223,38 @@ async def reorder_outlines(
     )
     nodes = result.scalars().all()
     return build_outline_tree(list(nodes))
+
+
+class OptimizeRequest(BaseModel):
+    """智能优化章节节奏请求"""
+    target_words: int = Field(
+        default=100000,
+        ge=10000,
+        le=10000000,
+        description="目标总字数（1万-1000万）"
+    )
+
+
+@router.post("/optimize")
+async def optimize_chapter_rhythm(
+    project_id: str,
+    optimize_data: OptimizeRequest,
+) -> dict:
+    """
+    AI 智能优化章节字数分配
+    
+    根据目标总字数，智能分配每个大纲节点的建议字数。
+    - 开头（前10%）：15% 字数
+    - 中段（60%）：55% 字数
+    - 结尾（30%）：30% 字数
+    - 主线章节比支线章节分配更多字数
+    """
+    llm = get_llm_service()
+    optimizer = OutlineOptimizer(llm)
+    
+    result = await optimizer.optimize_chapter_rhythm(
+        project_id=project_id,
+        target_words=optimize_data.target_words,
+    )
+    
+    return result

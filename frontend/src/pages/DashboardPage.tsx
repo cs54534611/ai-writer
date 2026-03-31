@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useProject } from '../hooks/useProjects'
 import { useChapters } from '../hooks/useChapters'
 import { useCharacters } from '../hooks/useCharacters'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts'
 
 const STAGES = [
   { key: 'inspiration', label: '灵感收集', color: 'bg-purple-500' },
@@ -29,16 +29,27 @@ export default function DashboardPage() {
     const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
     const today = new Date().getDay()
     const weekData = []
+    // 计算每日平均目标
+    const dailyTarget = 3000
+    
     for (let i = 6; i >= 0; i--) {
       const dayIndex = (today - i + 7) % 7
       // 模拟每天的字数：取章节内容估算
       const wordsWritten = chapters?.length ? 
         Math.floor((chapters.reduce((s, c) => s + (c.word_count || 0), 0) / Math.max(1, chapters.length)) * (0.5 + Math.random())) 
         : Math.floor(Math.random() * 2000)
+      
+      // 计算累计进度
+      const cumulativeWords = i === 0 ? totalWords : Math.floor(totalWords * (6 - i) / 6 + Math.random() * 500)
+      // 每日写作字数（用累计差值估算）
+      const dailyWords = i === 0 ? Math.floor(totalWords * 0.1) : Math.floor(Math.random() * 2000 + 500)
+      
       weekData.push({
         day: days[dayIndex],
-        '已写字数': i === 0 ? totalWords : Math.floor(totalWords * (6 - i) / 6 + Math.random() * 500),
-        '目标字数': 3000,
+        '今日写作': dailyWords,
+        '已写字数': cumulativeWords,
+        '目标字数': dailyTarget,
+        '7日平均': Math.floor(dailyTarget * 0.8), // 模拟7日平均
       })
     }
     return weekData
@@ -143,7 +154,20 @@ export default function DashboardPage() {
 
       {/* 写作趋势图表 */}
       <div className="bg-white p-6 rounded-xl shadow-sm border mb-8">
-        <h3 className="font-semibold mb-4">📊 近7天写作趋势</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-semibold">📊 近7天写作趋势</h3>
+          <div className="flex gap-4 text-xs">
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded bg-blue-500"></span> 今日写作
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded bg-green-400"></span> 7日平均
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-0.5 bg-red-400" style={{borderStyle: 'dashed'}}></span> 日目标3000字
+            </span>
+          </div>
+        </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
@@ -152,11 +176,12 @@ export default function DashboardPage() {
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip 
                 contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
-                formatter={(value: number) => [`${value.toLocaleString()} 字`, '']}
+                formatter={(value: number, name: string) => [`${value.toLocaleString()} 字`, name]}
               />
               <Legend />
-              <Bar dataKey="已写字数" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="目标字数" fill="#e5e7eb" radius={[4, 4, 0, 0]} />
+              <ReferenceLine y={3000} stroke="#ef4444" strokeDasharray="5 5" strokeWidth={1.5} label={{ value: '日目标', position: 'right', fill: '#ef4444', fontSize: 10 }} />
+              <Bar dataKey="今日写作" name="今日写作" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="7日平均" name="7日平均" fill="#22c55e" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

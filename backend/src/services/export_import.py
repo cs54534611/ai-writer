@@ -627,6 +627,87 @@ class ExportImportService:
                 "error": f"导出 JSON 失败: {str(e)}",
             }
 
+    async def export_chapter_as_docx(self, chapter_id: str) -> bytes:
+        """
+        导出章节为 Word 文档（使用 python-docx）
+        
+        Args:
+            chapter_id: 章节ID
+        
+        Returns:
+            bytes: .docx 文件的二进制内容
+        """
+        try:
+            from docx import Document
+            from docx.shared import Pt, RGBColor
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+            
+            chapter = await self._get_chapter(chapter_id)
+            if not chapter:
+                raise ValueError(f"章节 {chapter_id} 未找到")
+            
+            title = chapter.get("title", "无标题")
+            content = chapter.get("content", "")
+            
+            # 创建 Word 文档
+            doc = Document()
+            
+            # 设置标题
+            title_para = doc.add_heading(title, level=1)
+            title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            # 添加角色信息（如果有）
+            characters = chapter.get("characters", [])
+            if characters:
+                doc.add_heading("登场角色", level=2)
+                for char in characters:
+                    char_name = char.get("name", "未知")
+                    char_desc = char.get("description", "")
+                    p = doc.add_paragraph()
+                    p.add_run(f"• {char_name}").bold = True
+                    if char_desc:
+                        p.add_run(f": {char_desc}")
+                doc.add_paragraph()
+            
+            # 添加正文
+            doc.add_heading("正文", level=2)
+            
+            # 解析内容（简单的段落分割）
+            paragraphs = content.split("\n\n")
+            for para_text in paragraphs:
+                para_text = para_text.strip()
+                if not para_text:
+                    continue
+                
+                # 跳过已经是标题的
+                if para_text.startswith("#"):
+                    continue
+                
+                # 添加段落
+                p = doc.add_paragraph(para_text)
+                p.paragraph_format.line_spacing = 1.5
+                p.paragraph_format.first_line_indent = Pt(24)  # 首行缩进
+            
+            # 添加作者备注（如果有）
+            if chapter.get("notes"):
+                doc.add_paragraph()
+                doc.add_heading("作者备注", level=2)
+                notes_para = doc.add_paragraph(chapter["notes"])
+                notes_para.paragraph_format.line_spacing = 1.5
+            
+            # 保存到字节流
+            from io import BytesIO
+            docx_stream = BytesIO()
+            doc.save(docx_stream)
+            docx_stream.seek(0)
+            
+            return docx_stream.getvalue()
+            
+        except ImportError:
+            raise ImportError("请安装 python-docx: pip install python-docx")
+        except Exception as e:
+            raise Exception(f"导出 Word 文档失败: {str(e)}")
+
 
 # 全局服务实例
 _export_import_service: Optional[ExportImportService] = None
