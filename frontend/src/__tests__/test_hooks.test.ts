@@ -81,12 +81,17 @@ describe('useWriting Hook', () => {
     wordCount: 0,
     isDirty: false,
     saveContent: vi.fn(),
-    updateContent: vi.fn(),
+    updateContent: vi.fn((content: string) => {
+      mockWritingStore.content = content
+      mockWritingStore.isDirty = true
+    }),
     calculateWordCount: vi.fn((text: string) => text.length),
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWritingStore.content = ''
+    mockWritingStore.isDirty = false
   })
 
   it('should have empty content initially', () => {
