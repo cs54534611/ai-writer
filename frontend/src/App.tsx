@@ -13,6 +13,8 @@ import FandomWorkflowPage from './pages/FandomWorkflowPage'
 import DashboardPage from './pages/DashboardPage'
 import PluginsPage from './pages/PluginsPage'
 import ExportImportPage from './pages/ExportImportPage'
+import TimelinePage from './pages/TimelinePage'
+import LocationsPage from './pages/LocationsPage'
 
 function App() {
   return (
@@ -32,6 +34,8 @@ function App() {
         <Route path="/projects/:projectId/fandom" element={<FandomWorkflowPage />} />
         <Route path="/projects/:projectId/dashboard" element={<DashboardPage />} />
         <Route path="/projects/:projectId/export-import" element={<ExportImportPage />} />
+        <Route path="/projects/:projectId/timeline" element={<TimelinePage />} />
+        <Route path="/projects/:projectId/locations" element={<LocationsPage />} />
         <Route path="/plugins" element={<PluginsPage />} />
         <Route path="/" element={<Navigate to="/projects" replace />} />
       </Routes>
