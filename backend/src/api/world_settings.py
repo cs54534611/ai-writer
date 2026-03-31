@@ -7,6 +7,7 @@ from typing import Annotated, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from pydantic import BaseModel, Field
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -19,6 +20,8 @@ from src.schemas.world_setting import (
     WorldSettingRead,
     WorldSettingUpdate,
 )
+from src.services.llm import get_llm_service
+from src.services.map_generator import MapGenerator
 
 
 router = APIRouter()
@@ -328,3 +331,40 @@ async def delete_world_setting(
         await _delete_setting_vector(project_id, setting_id)
     except Exception:
         pass
+
+
+class MapGenerateRequest(BaseModel):
+    """AI 生成世界地图请求"""
+    genre: str = Field(
+        default="玄幻",
+        description="题材类型（修仙/都市/玄幻/穿越/科幻/奇幻）"
+    )
+    settings: list[dict] = Field(
+        default=[],
+        description="已有世界设定列表"
+    )
+
+
+@router.post("/maps/generate")
+async def generate_world_map(
+    project_id: str,
+    map_request: MapGenerateRequest,
+    db: Annotated[AsyncSession, Depends(get_setting_db)],
+) -> dict:
+    """
+    AI 生成世界地图结构
+    
+    根据题材类型和已有设定，生成包含三个层级的世界地图：
+    - 上层空间（天界/仙界/神域）
+    - 中层空间（人间/世俗界）
+    - 下层空间（冥界/地狱/深渊）
+    """
+    llm = get_llm_service()
+    generator = MapGenerator(llm)
+    
+    result = await generator.generate_world_map(
+        genre=map_request.genre,
+        settings=map_request.settings,
+    )
+    
+    return result

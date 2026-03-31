@@ -19,7 +19,37 @@ interface GraphNode extends NodePosition {
 }
 
 const NODE_RADIUS = 30
-const RELATIONSHIP_TYPES = ['朋友', '家人', '恋人', '敌人', '同事', '师生', '陌生人', '其他']
+// 关系类型筛选配置
+const RELATIONSHIP_FILTER_TYPES = [
+  { key: 'all', label: '全部', color: '#6b7280' },
+  { key: 'family', label: '亲情', color: '#3b82f6' },
+  { key: 'friend', label: '友情', color: '#22c55e' },
+  { key: 'love', label: '爱情', color: '#ec4899' },
+  { key: 'enemy', label: '对立', color: '#ef4444' },
+  { key: 'subordinate', label: '从属', color: '#a855f7' },
+]
+
+// 关系类型映射到筛选类别
+const RELATION_TYPE_MAP: Record<string, string> = {
+  '家人': 'family',
+  '亲人': 'family',
+  '父子': 'family',
+  '母子': 'family',
+  '兄弟': 'family',
+  '姐妹': 'family',
+  '朋友': 'friend',
+  '闺蜜': 'friend',
+  '恋人': 'love',
+  '情侣': 'love',
+  '爱人': 'love',
+  '敌人': 'enemy',
+  '仇人': 'enemy',
+  '对手': 'enemy',
+  '同事': 'subordinate',
+  '上下级': 'subordinate',
+  '师生': 'subordinate',
+  '主仆': 'subordinate',
+}
 
 export default function RelationshipGraph() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -31,6 +61,7 @@ export default function RelationshipGraph() {
   const [draggedNode, setDraggedNode] = useState<string | null>(null)
   const [lastMouse, setLastMouse] = useState({ x: 0, y: 0 })
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
+  const [relationshipFilter, setRelationshipFilter] = useState('all')
   const [showAddRelation, setShowAddRelation] = useState(false)
   const [relationForm, setRelationForm] = useState({
     sourceId: '',
@@ -281,6 +312,24 @@ export default function RelationshipGraph() {
         </div>
       </div>
 
+      {/* 关系类型筛选 Tab */}
+      <div className="flex gap-2 mb-4">
+        {RELATIONSHIP_FILTER_TYPES.map(filter => (
+          <button
+            key={filter.key}
+            onClick={() => setRelationshipFilter(filter.key)}
+            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              relationshipFilter === filter.key
+                ? 'bg-gray-800 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            style={relationshipFilter === filter.key ? { backgroundColor: filter.color } : {}}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex-1 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
         <div
           ref={containerRef}
@@ -303,6 +352,19 @@ export default function RelationshipGraph() {
               const target = nodes.get(link.target as string)
               if (!source || !target) return null
 
+              // 筛选逻辑：关系类型过滤
+              const linkTypeKey = RELATION_TYPE_MAP[link.type] || 'other'
+              const isFiltered = relationshipFilter !== 'all' && linkTypeKey !== relationshipFilter
+
+              // 高亮逻辑：选中节点时只显示该节点相关的关系
+              const isRelatedToSelected = selectedNode && 
+                (link.source === selectedNode.id || link.target === selectedNode.id)
+              const isHighlighted = selectedNode && isRelatedToSelected
+              const isDimmed = selectedNode && !isRelatedToSelected
+
+              // 如果被过滤则不显示
+              if (isFiltered) return null
+
               const dx = target.x - source.x
               const dy = target.y - source.y
               const dist = Math.sqrt(dx * dx + dy * dy) || 1
@@ -312,6 +374,10 @@ export default function RelationshipGraph() {
               const arrowX = target.x - (NODE_RADIUS + 5) * (dx / dist)
               const arrowY = target.y - (NODE_RADIUS + 5) * (dy / dist)
 
+              // 关系线颜色
+              const linkColor = isHighlighted ? '#2563eb' : (isDimmed ? '#d1d5db' : '#9ca3af')
+              const linkWidth = isHighlighted ? 3 : 2
+
               return (
                 <g key={`link-${index}`}>
                   <line
@@ -319,22 +385,24 @@ export default function RelationshipGraph() {
                     y1={source.y}
                     x2={arrowX}
                     y2={arrowY}
-                    stroke="#9ca3af"
-                    strokeWidth={2}
+                    stroke={linkColor}
+                    strokeWidth={linkWidth}
+                    style={{ opacity: isDimmed ? 0.3 : 1 }}
                   />
                   {/* Arrow head */}
                   <polygon
                     points="0,-5 10,0 0,5"
-                    fill="#9ca3af"
+                    fill={linkColor}
                     transform={`translate(${arrowX},${arrowY}) rotate(${((angle * 180) / Math.PI).toFixed(2)})`}
+                    style={{ opacity: isDimmed ? 0.3 : 1 }}
                   />
                   {/* Relationship label */}
                   <text
                     x={(source.x + target.x) / 2}
                     y={(source.y + target.y) / 2 - 10}
                     textAnchor="middle"
-                    className="text-xs fill-gray-600"
-                    style={{ fontSize: '12px' }}
+                    className="text-xs fill-gray-600 pointer-events-none"
+                    style={{ fontSize: '12px', opacity: isDimmed ? 0.3 : 1 }}
                   >
                     {link.type}
                   </text>
@@ -347,19 +415,27 @@ export default function RelationshipGraph() {
               const pos = nodes.get(node.id)
               if (!pos) return null
 
+              // 高亮/淡化逻辑
+              const isRelatedToSelected = selectedNode && relationships?.some(
+                r => (r.source_id === selectedNode.id && r.target_id === node.id) ||
+                     (r.target_id === selectedNode.id && r.source_id === node.id)
+              )
+              const isHighlighted = selectedNode?.id === node.id || isRelatedToSelected
+              const isDimmed = selectedNode && !isHighlighted
+
               return (
                 <g
                   key={node.id}
                   onClick={(e) => handleNodeClick(e, { ...node, x: pos.x, y: pos.y })}
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: 'pointer', opacity: isDimmed ? 0.3 : 1 }}
                 >
                   <circle
                     cx={pos.x}
                     cy={pos.y}
-                    r={NODE_RADIUS}
+                    r={selectedNode?.id === node.id ? NODE_RADIUS + 5 : NODE_RADIUS}
                     fill={getNodeColor(node.gender)}
                     stroke={selectedNode?.id === node.id ? '#2563eb' : '#fff'}
-                    strokeWidth={selectedNode?.id === node.id ? 3 : 2}
+                    strokeWidth={selectedNode?.id === node.id ? 4 : 2}
                   />
                   <text
                     x={pos.x}

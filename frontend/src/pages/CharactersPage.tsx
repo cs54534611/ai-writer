@@ -171,20 +171,44 @@ export default function CharactersPage() {
               onClick={() => openDetailModal(character)}
               className="p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-1">{character.name}</h3>
-                  <p className="text-sm text-gray-500">
-                    {getGenderLabel(character.gender)} {character.age ? `· ${character.age}岁` : ''}
-                  </p>
+              <div className="flex items-start gap-3">
+                {/* 头像区域 */}
+                <div className="flex-shrink-0">
+                  {character.avatar_url ? (
+                    <img
+                      src={character.avatar_url}
+                      alt={character.name}
+                      className="w-14 h-14 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  ) : (
+                    <div 
+                      className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold"
+                      style={{ 
+                        backgroundColor: character.gender === 'male' ? '#3b82f6' : 
+                                        character.gender === 'female' ? '#ec4899' : '#8b5cf6'
+                      }}
+                    >
+                      {character.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
-                <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
-                  {character.personality?.slice(0, 4) || '待补充'}
-                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-1">{character.name}</h3>
+                      <p className="text-sm text-gray-500">
+                        {getGenderLabel(character.gender)} {character.age ? `· ${character.age}岁` : ''}
+                      </p>
+                    </div>
+                    <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
+                      {character.personality?.slice(0, 4) || '待补充'}
+                    </span>
+                  </div>
+                  {character.background && (
+                    <p className="mt-2 text-sm text-gray-600 line-clamp-2">{character.background}</p>
+                  )}
+                </div>
               </div>
-              {character.background && (
-                <p className="mt-2 text-sm text-gray-600 line-clamp-2">{character.background}</p>
-              )}
             </div>
           ))}
         </div>

@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Annotated, AsyncGenerator, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
-from sqlmodel import select
+from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.database import get_db_manager
@@ -184,5 +184,23 @@ async def delete_timeline_event(
     await db.flush()
 
 
-from src.services.llm import get_llm_service
-from src.services.timeline_generator import TimelineGenerator
+@router.post("/generate")
+async def generate_timeline_from_outline(
+    project_id: Annotated[str, Path(description="项目ID")],
+) -> dict:
+    """
+    AI 从大纲自动生成时间线事件
+    
+    读取项目大纲，调用 LLM 提取关键事件，
+    生成时间线事件列表（包含 time_point, event_type, sort_order）
+    """
+    llm = get_llm_service()
+    generator = TimelineGenerator(llm)
+    
+    events = await generator.generate_from_outline(project_id)
+    
+    return {
+        "events": events,
+        "count": len(events),
+        "message": "时间线事件已生成并保存" if events else "未找到可生成的事件",
+    }

@@ -196,13 +196,15 @@ class WritingService:
         return self.CONTINUE_TEMPLATE.format(context=context, style=style_desc)
 
     def _build_continue_multi_prompt(
-        self, context: str, style: str = "default", num_versions: int = 2
+        self, context: str, style: WritingStyle = WritingStyle.NORMAL, num_versions: int = 2
     ) -> str:
         """构建多版本续写提示词"""
         style_map = {
-            "default": "叙事流畅，节奏适中",
-            "dialog_heavy": "对话丰富，人物互动频繁",
-            "desc_heavy": "描写细腻，环境氛围浓厚",
+            WritingStyle.NORMAL: "叙事流畅，节奏适中",
+            WritingStyle.DIALOGUE_HEAVY: "对话丰富，人物互动频繁",
+            WritingStyle.DESCRIPTION_HEAVY: "描写细腻，环境氛围浓厚",
+            WritingStyle.XIUXIAN: "修仙玄幻风格，灵气波动、法力运转",
+            WritingStyle.BATTLE: "战斗风格，动作场面激烈",
         }
         style_desc = style_map.get(style, "叙事流畅，节奏适中")
         return self.CONTINUE_MULTI_TEMPLATE.format(
@@ -294,7 +296,7 @@ class WritingService:
     async def continue_writing_stream(
         self,
         context: str,
-        style: str = "default",
+        style: WritingStyle = WritingStyle.NORMAL,
         project_id: Optional[str] = None,
         use_rag: bool = True,
     ) -> AsyncIterator[str]:
