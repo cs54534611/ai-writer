@@ -1,0 +1,9 @@
+{
+  "id": "voice_input",
+  "name": "语音输入",
+  "version": "1.0.0",
+  "description": "语音输入功能（由前端实现，此为占位插件）",
+  "author": "AI Writer Team",
+  "hooks": [],
+  "note": "语音输入功能已由前端实现，此插件为框架占位"
+}

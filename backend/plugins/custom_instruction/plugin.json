@@ -1,0 +1,25 @@
+{
+  "id": "custom_instruction",
+  "name": "自定义指令",
+  "version": "1.0.0",
+  "description": "在章节完成时自动插入自定义注释/签名，方便作者添加个人标记",
+  "author": "AI Writer Team",
+  "hooks": ["on_chapter_complete"],
+  "config_schema": {
+    "signature_text": {
+      "type": "string",
+      "default": "",
+      "description": "签名文本，将在章节末尾自动插入"
+    },
+    "include_timestamp": {
+      "type": "boolean",
+      "default": true,
+      "description": "是否包含时间戳"
+    },
+    "include_word_count": {
+      "type": "boolean",
+      "default": true,
+      "description": "是否包含字数统计"
+    }
+  }
+}

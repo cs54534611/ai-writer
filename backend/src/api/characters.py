@@ -328,6 +328,74 @@ async def get_character_profile(
     }
 
 
+@router.post("/merge-suggestions")
+async def get_character_merge_suggestions(
+    project_id: Annotated[str, Path(description="项目ID")],
+    db: Annotated[AsyncSession, Depends(get_project_db)],
+):
+    """
+    获取角色合并建议（基于 jieba 别名分析）
+    
+    识别可能是同一个人的角色，返回合并建议列表
+    """
+    from src.services.alias_merger import AliasMerger
+    
+    # 获取所有角色
+    query = select(Character).where(Character.project_id == project_id)
+    result = await db.execute(query)
+    characters = result.scalars().all()
+    
+    if not characters:
+        return {
+            "success": True,
+            "suggestions": [],
+            "total_characters": 0,
+        }
+    
+    # 转换为 dict 格式
+    characters_data = []
+    for char in characters:
+        char_dict = {
+            "id": char.id,
+            "name": char.name,
+            "description": "",
+            "gender": char.gender or "",
+            "age": char.age or "",
+            "occupation": char.occupation or "",
+            "personality": char.personality or "",
+            "background": char.background or "",
+            "bio": char.bio or "",
+        }
+        # 组合描述
+        desc_parts = [char.personality, char.background, char.bio]
+        char_dict["description"] = "，".join(p for p in desc_parts if p)
+        characters_data.append(char_dict)
+    
+    # 使用 AliasMerger 分析
+    merger = AliasMerger()
+    suggestions = merger.merge_similar_characters(characters_data)
+    
+    # 简化返回格式
+    simplified_suggestions = []
+    for sug in suggestions:
+        simplified_suggestions.append({
+            "original_id": sug["original"].get("id"),
+            "original_name": sug["original"].get("name"),
+            "alias_id": sug["alias"].get("id"),
+            "alias_name": sug["alias"].get("name"),
+            "confidence": sug["confidence"],
+            "reason": sug["reason"],
+            "common_aliases": sug.get("common_aliases", []),
+            "common_keywords": sug.get("common_keywords", []),
+        })
+    
+    return {
+        "success": True,
+        "suggestions": simplified_suggestions,
+        "total_characters": len(characters_data),
+    }
+
+
 @router.post("/similar")
 async def find_similar_characters(
     project_id: Annotated[str, Path(description="项目ID")],

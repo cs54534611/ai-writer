@@ -215,6 +215,37 @@ async def export_chapter_docx(
         )
 
 
+@router.get("/projects/{project_id}/export-excel")
+async def export_project_excel(
+    project_id: Annotated[str, Path(description="项目ID")],
+):
+    """
+    导出项目为 Excel 格式
+    
+    包含三个 Sheet:
+    - 章节列表（标题/字数/状态/更新时间）
+    - 角色列表（姓名/性别/性格/背景）
+    - 大纲（节点标题/类型/字数目标）
+    """
+    service = get_export_import_service()
+    
+    result = await service.export_project_as_excel(project_id)
+    
+    if not result.get("success", False):
+        return JSONResponse(
+            status_code=400,
+            content=result,
+        )
+    
+    return StreamingResponse(
+        iter([result["data"]]),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{result["filename"]}"',
+        },
+    )
+
+
 @router.get("/projects/{project_id}/world-settings/export")
 async def export_world_settings(
     project_id: Annotated[str, Path(description="项目ID")],

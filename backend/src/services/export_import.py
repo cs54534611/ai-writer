@@ -627,6 +627,179 @@ class ExportImportService:
                 "error": f"导出 JSON 失败: {str(e)}",
             }
 
+    async def export_project_as_excel(self, project_id: str) -> dict:
+        """
+        导出项目为 Excel 格式（使用 openpyxl）
+        
+        Args:
+            project_id: 项目ID
+        
+        Returns:
+            dict: 包含 Excel 文件二进制数据的导出结果
+        """
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+            from openpyxl.utils import get_column_letter
+            
+            project_dir = self.settings.home_dir / ".aiwriter" / "projects" / project_id
+            
+            if not project_dir.exists():
+                return {
+                    "success": False,
+                    "error": f"项目目录不存在: {project_dir}",
+                }
+            
+            # 创建工作簿
+            wb = Workbook()
+            
+            # ===== Sheet1: 章节列表 =====
+            ws_chapters = wb.active
+            ws_chapters.title = "章节列表"
+            
+            # 样式
+            header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+            header_font = Font(color="FFFFFF", bold=True)
+            thin_border = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+            
+            # 标题行
+            headers_chapters = ["标题", "字数", "状态", "更新时间", "创建时间"]
+            for col, header in enumerate(headers_chapters, 1):
+                cell = ws_chapters.cell(row=1, column=col, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center')
+                cell.border = thin_border
+            
+            # 读取章节数据
+            chapters_file = project_dir / "chapters.json"
+            chapters_data = []
+            if chapters_file.exists():
+                with open(chapters_file, "r", encoding="utf-8") as f:
+                    chapters_data = json.load(f)
+                if isinstance(chapters_data, dict):
+                    chapters_data = chapters_data.get("items", [])
+            
+            # 填充数据
+            for row_idx, chapter in enumerate(chapters_data, 2):
+                ws_chapters.cell(row=row_idx, column=1, value=chapter.get("title", "")).border = thin_border
+                ws_chapters.cell(row=row_idx, column=2, value=len(chapter.get("content", ""))).border = thin_border
+                ws_chapters.cell(row=row_idx, column=3, value=chapter.get("status", "draft")).border = thin_border
+                ws_chapters.cell(row=row_idx, column=4, value=chapter.get("updated_at", "")).border = thin_border
+                ws_chapters.cell(row=row_idx, column=5, value=chapter.get("created_at", "")).border = thin_border
+            
+            # 设置列宽
+            ws_chapters.column_dimensions['A'].width = 30
+            ws_chapters.column_dimensions['B'].width = 10
+            ws_chapters.column_dimensions['C'].width = 10
+            ws_chapters.column_dimensions['D'].width = 20
+            ws_chapters.column_dimensions['E'].width = 20
+            
+            # ===== Sheet2: 角色列表 =====
+            ws_characters = wb.create_sheet("角色列表")
+            
+            # 标题行
+            headers_characters = ["姓名", "性别", "性格", "背景", "职业", "年龄"]
+            for col, header in enumerate(headers_characters, 1):
+                cell = ws_characters.cell(row=1, column=col, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center')
+                cell.border = thin_border
+            
+            # 读取角色数据
+            characters_file = project_dir / "characters.json"
+            characters_data = []
+            if characters_file.exists():
+                with open(characters_file, "r", encoding="utf-8") as f:
+                    characters_data = json.load(f)
+                if isinstance(characters_data, dict):
+                    characters_data = characters_data.get("items", [])
+            
+            # 填充数据
+            for row_idx, char in enumerate(characters_data, 2):
+                ws_characters.cell(row=row_idx, column=1, value=char.get("name", "")).border = thin_border
+                ws_characters.cell(row=row_idx, column=2, value=char.get("gender", "")).border = thin_border
+                ws_characters.cell(row=row_idx, column=3, value=char.get("personality", "")).border = thin_border
+                ws_characters.cell(row=row_idx, column=4, value=char.get("background", "")).border = thin_border
+                ws_characters.cell(row=row_idx, column=5, value=char.get("occupation", "")).border = thin_border
+                ws_characters.cell(row=row_idx, column=6, value=char.get("age", "")).border = thin_border
+            
+            # 设置列宽
+            ws_characters.column_dimensions['A'].width = 15
+            ws_characters.column_dimensions['B'].width = 8
+            ws_characters.column_dimensions['C'].width = 20
+            ws_characters.column_dimensions['D'].width = 30
+            ws_characters.column_dimensions['E'].width = 15
+            ws_characters.column_dimensions['F'].width = 8
+            
+            # ===== Sheet3: 大纲 =====
+            ws_outlines = wb.create_sheet("大纲")
+            
+            # 标题行
+            headers_outlines = ["节点标题", "类型", "字数目标", "字数统计", "顺序", "父节点"]
+            for col, header in enumerate(headers_outlines, 1):
+                cell = ws_outlines.cell(row=1, column=col, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center')
+                cell.border = thin_border
+            
+            # 读取大纲数据
+            outlines_file = project_dir / "outlines.json"
+            outlines_data = []
+            if outlines_file.exists():
+                with open(outlines_file, "r", encoding="utf-8") as f:
+                    outlines_data = json.load(f)
+                if isinstance(outlines_data, dict):
+                    outlines_data = outlines_data.get("items", [])
+            
+            # 填充数据
+            for row_idx, outline in enumerate(outlines_data, 2):
+                ws_outlines.cell(row=row_idx, column=1, value=outline.get("title", "")).border = thin_border
+                ws_outlines.cell(row=row_idx, column=2, value=outline.get("type", "chapter")).border = thin_border
+                ws_outlines.cell(row=row_idx, column=3, value=outline.get("word_count_target", 0)).border = thin_border
+                ws_outlines.cell(row=row_idx, column=4, value=outline.get("word_count", 0)).border = thin_border
+                ws_outlines.cell(row=row_idx, column=5, value=outline.get("order", 0)).border = thin_border
+                ws_outlines.cell(row=row_idx, column=6, value=outline.get("parent_id", "")).border = thin_border
+            
+            # 设置列宽
+            ws_outlines.column_dimensions['A'].width = 25
+            ws_outlines.column_dimensions['B'].width = 10
+            ws_outlines.column_dimensions['C'].width = 12
+            ws_outlines.column_dimensions['D'].width = 12
+            ws_outlines.column_dimensions['E'].width = 8
+            ws_outlines.column_dimensions['F'].width = 15
+            
+            # 保存到字节流
+            from io import BytesIO
+            excel_stream = BytesIO()
+            wb.save(excel_stream)
+            excel_stream.seek(0)
+            
+            return {
+                "success": True,
+                "format": "xlsx",
+                "data": excel_stream.getvalue(),
+                "filename": f"{project_id}_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            }
+            
+        except ImportError:
+            return {
+                "success": False,
+                "error": "请安装 openpyxl: pip install openpyxl",
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"导出 Excel 失败: {str(e)}",
+            }
+
     async def export_chapter_as_docx(self, chapter_id: str) -> bytes:
         """
         导出章节为 Word 文档（使用 python-docx）

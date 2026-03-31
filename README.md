@@ -4,26 +4,39 @@
 
 ## 功能特性
 
-- 🤖 AI 驱动的写作辅助
-- 📄 多格式文档支持
-- 🔄 实时编辑预览
-- 💾 本地数据存储
-- 🎨 现代化的用户界面
+### 核心功能
+- 📝 **章节管理** - 创建、编辑、删除小说章节，支持 Markdown 编辑
+- 👥 **角色管理** - 角色卡片、特征向量、相似角色推荐
+- 🔗 **关系图谱** - 可视化角色关系网络
+- 📍 **地点管理** - 故事发生地点的设定与管理
+- 📋 **大纲规划** - 树形大纲编辑器，支持拖拽排序
+- 💡 **灵感管理** - 收藏和整理写作灵感
+- 🕐 **时间线** - 故事时间线可视化
 
-## 技术栈
+### AI 辅助功能
+- 🤖 **AI 续写** - 基于上下文智能续写章节
+- 💬 **AI 对话** - 角色对话生成
+- 🔍 **AI 审核** - 语法检查、敏感词过滤
+- 📊 **AI 优化** - 大纲结构优化建议
+- 🗺️ **AI 地图生成** - 基于设定生成地图描述
+- 🔮 **灵感生成** - Fandom 风格灵感推荐
 
-- **后端**: Python 3.11+, FastAPI, SQLAlchemy
-- **前端**: TypeScript, React, Vite, TailwindCSS
-- **数据库**: SQLite (默认)
-- **AI**: 支持多种 LLM 提供商 (OpenAI, Anthropic, 本地模型)
+### 导出与导入
+- 📤 **多格式导出** - 支持 JSON、Markdown、Word (docx)、TXT、Excel
+- 📥 **多格式导入** - 支持从 JSON、ZIP、文件夹批量导入
+- 📑 **章节导出** - 单章节或多章节导出
 
-## 安装步骤
+### 插件系统
+- 🔌 **插件市场** - 可扩展的插件架构
+- �钩子系统 - 支持 on_chapter_complete 等生命周期钩子
+- ⚙️ **示例插件** - custom_instruction（自动签名）、voice_input（语音输入占位）
 
-### 前置要求
+### 特色功能
+- 🖼️ **图片库** - AI 生成图片与本地上传管理
+- 📖 **Fandom 工作流** - 从参考资料提取灵感
+- 🏠 **世界设定** - 人物/地点/物品/组织/概念分类管理
 
-- Python 3.11+
-- Node.js 18+
-- pnpm (推荐) 或 npm
+## 快速开始
 
 ### 1. 克隆项目
 
@@ -77,24 +90,20 @@ cp .env.example .env
 python scripts/init_db.py
 ```
 
-## 快速开始
+### 6. 启动服务
 
-### 启动后端服务
-
+**启动后端：**
 ```bash
 cd backend
 uv run uvicorn src.api.main:app --reload --port 8000
 ```
-
 后端 API 文档: http://localhost:8000/docs
 
-### 启动前端开发服务器
-
+**启动前端（另开终端）：**
 ```bash
 cd frontend
 pnpm dev
 ```
-
 前端应用: http://localhost:5173
 
 ## 本地开发指南
@@ -188,6 +197,9 @@ ai-writer/
 │   │   ├── schemas/     # Pydantic schemas
 │   │   ├── services/    # 业务逻辑
 │   │   └── utils/       # 工具函数
+│   ├── plugins/         # 插件目录
+│   │   ├── custom_instruction/  # 自定义签名插件
+│   │   └── voice_input/         # 语音输入占位插件
 │   ├── tests/           # 测试文件
 │   └── pyproject.toml   # 项目配置
 ├── frontend/            # React 前端

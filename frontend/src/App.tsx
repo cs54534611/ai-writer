@@ -12,6 +12,7 @@ import ImageGalleryPage from './pages/ImageGalleryPage'
 import FandomWorkflowPage from './pages/FandomWorkflowPage'
 import DashboardPage from './pages/DashboardPage'
 import PluginsPage from './pages/PluginsPage'
+import WorldSettingsPage from './pages/WorldSettingsPage'
 import ExportImportPage from './pages/ExportImportPage'
 import TimelinePage from './pages/TimelinePage'
 import LocationsPage from './pages/LocationsPage'
@@ -36,7 +37,8 @@ function App() {
         <Route path="/projects/:projectId/export-import" element={<ExportImportPage />} />
         <Route path="/projects/:projectId/timeline" element={<TimelinePage />} />
         <Route path="/projects/:projectId/locations" element={<LocationsPage />} />
-        <Route path="/plugins" element={<PluginsPage />} />
+        <Route path="/projects/:projectId/settings" element={<WorldSettingsPage />} />
+        <Route path="/projects/:projectId/plugins" element={<PluginsPage />} />
         <Route path="/" element={<Navigate to="/projects" replace />} />
       </Routes>
     </Layout>
