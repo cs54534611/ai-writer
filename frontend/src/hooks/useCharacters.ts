@@ -84,3 +84,23 @@ export function useDeleteCharacter() {
     },
   })
 }
+
+export interface SimilarCharacter {
+  character_id: string
+  name: string
+  similarity: number
+  reason: string
+}
+
+export function useFindSimilarCharacters() {
+  return useMutation({
+    mutationFn: async ({ projectId, characterId }: { projectId: string; characterId: string }) =>
+      fetchJSON(`${API}/projects/${projectId}/characters/similar`, {
+        method: 'POST',
+        body: JSON.stringify({ character_id: characterId }),
+      }),
+    onError: (err, { projectId }) => {
+      console.error(`[useFindSimilarCharacters] 查找相似角色失败:`, err)
+    },
+  })
+}
