@@ -1,0 +1,8 @@
+{
+  "id": "writing_stats",
+  "name": "写作统计增强",
+  "version": "1.0.0",
+  "description": "记录每日写作字数，生成统计报告，帮助作者追踪写作进度",
+  "author": "AIWriter Team",
+  "hooks": ["on_chapter_complete"]
+}

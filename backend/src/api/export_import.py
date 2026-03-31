@@ -274,3 +274,32 @@ async def export_world_settings(
         )
     
     return JSONResponse(content=result)
+
+
+@router.get("/projects/{project_id}/export-pdf")
+async def export_project_pdf(
+    project_id: Annotated[str, Path(description="项目ID")],
+):
+    """
+    导出项目为 PDF 格式
+    
+    封面包含：项目名称 + 题材 + 目标字数 + 章节列表
+    正文包含：所有章节的标题和内容
+    """
+    service = get_export_import_service()
+    
+    result = await service.export_project_as_pdf(project_id)
+    
+    if not result.get("success", False):
+        return JSONResponse(
+            status_code=400,
+            content=result,
+        )
+    
+    return StreamingResponse(
+        iter([result["data"]]),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{result["filename"]}"',
+        },
+    )

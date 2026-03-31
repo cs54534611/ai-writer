@@ -1,6 +1,6 @@
 # AI Writer - 需求规格说明书
 
-> 版本：v2.0 | 日期：2026-03-31 | 状态：持续更新
+> 版本：v3.0 | 日期：2026-03-31 | 状态：持续更新
 
 ---
 
@@ -90,7 +90,7 @@
 | FE-LOC-001 | 层级地点管理 | 天界/人间/冥界/秘境等多层级 | DONE |
 | FE-FACTION-001 | 势力分布图 | 组织架构树 + 势力关系网络 | DONE |
 | BE-MAP-001 | AI 地图生成 | 关键词生成地图骨架 | TODO |
-| FE-MAP-001 | 程序化地形 | 程序化地形 + 人物轨迹动画 | TODO |
+| FE-MAP-001 | 程序化地形 | roughjs canvas 绘制丰富地图，不同颜色区分层级 | DONE |
 | FE-MAP-002 | 手绘风格地图 | rough.js 手绘风格地图 | TODO |
 
 ### 时间线
@@ -114,6 +114,7 @@
 | FE-EXPORT-001 | .aiwriter 格式导入/导出 | 全量备份和恢复 | DONE |
 | FE-EXPORT-002 | TXT/MD 导入 | 拖拽上传，智能章节切分 | DONE |
 | FE-EXPORT-003 | 多格式导出 | MD/TXT/JSON 导出 | DONE |
+| FE-EXPORT-PDF | PDF 电子书导出 | 项目导出为 PDF，包含封面/目录/正文 | DONE |
 
 ### 同人创作
 | 需求ID | 功能 | 验收标准 | 状态 |
@@ -133,6 +134,8 @@
 | FE-PLUGIN-001 | 插件架构 | CSP 沙箱隔离的插件机制 | DONE |
 | FE-PLUGIN-002 | 内置插件 | 日志备份插件、字数目标插件 | DONE |
 | FE-PLUGIN-003 | hello_world 示例 | 插件开发示例 | DONE |
+| FE-PLUGIN-REAL-1 | 写作统计插件 | 记录每日/每周/每月写作字数，生成 JSON 报告 | DONE |
+| FE-PLUGIN-REAL-2 | 章节提醒插件 | 章节完成时打印鼓励性提示语到日志 | DONE |
 
 ### 创作旅程仪表盘
 | 需求ID | 功能 | 验收标准 | 状态 |
@@ -213,12 +216,12 @@
 - ChromaDB 角色特征向量收集
 - 角色别名自动合并（jieba NLP）
 - rough.js 手绘风格地图
-- 程序化地形 + 人物轨迹动画
 
 ### 低优先级（v1.3+）
+- Cloud Functions 云端函数（自动化工作流）
+- TTS 语音播报（文字转语音朗读章节）
 - 插件市场 / 第三方 AI 指令模板
 - 云端协作 / 多用户实时同步
-- Word/Excel/PDF 导出
 
 ---
 

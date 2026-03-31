@@ -43,7 +43,7 @@ const LAYER_COLORS: Record<string, { stroke: string; fill: string; bg: string }>
   'void': { stroke: '#1f2937', fill: '#4b5563', bg: 'rgba(31, 41, 55, 0.1)' },
 }
 
-// 手绘风格地图组件
+// 手绘风格地图组件 - 增强版
 function RoughMap({ locations }: { locations: Location[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -104,15 +104,43 @@ function RoughMap({ locations }: { locations: Location[] }) {
       })
     })
 
-    // 绘制连接线
+    // 绘制层级的背景区域
+    layerOrder.forEach(layer => {
+      if (layerLocs[layer] && layerLocs[layer].length > 0) {
+        const colors = LAYER_COLORS[layer]
+        const layerYPos = layerY[layer]
+        
+        // 绘制层级背景带
+        rc.rectangle(30, layerYPos - 20, width - 60, 100, {
+          stroke: colors.stroke,
+          strokeWidth: 1,
+          fillStyle: 'solid',
+          fill: colors.bg,
+          bowing: 2,
+        })
+        
+        // 层级名称
+        ctx.font = 'bold 11px sans-serif'
+        ctx.textAlign = 'left'
+        ctx.fillStyle = colors.stroke
+        ctx.fillText(LAYER_NAMES[layer] || layer, 40, layerYPos - 5)
+      }
+    })
+
+    // 绘制连接线（先绘制，在地点下方）
     connections.forEach(({ from, to }) => {
       const fromPos = locPositions[from.id]
       const toPos = locPositions[to.id]
       if (fromPos && toPos) {
-        rc.line(fromPos.x, fromPos.y, toPos.x, toPos.y, {
+        // 绘制带箭头的连线
+        rc.linearPath([
+          [fromPos.x, fromPos.y + 20],
+          [toPos.x, toPos.y - 20],
+        ], {
           stroke: '#9ca3af',
-          strokeWidth: 1.5,
-          bowing: 1,
+          strokeWidth: 2,
+          bowing: 2,
+          dash: [5, 3],
         })
       }
     })
@@ -123,22 +151,104 @@ function RoughMap({ locations }: { locations: Location[] }) {
       if (!pos) return
 
       const colors = LAYER_COLORS[loc.layer] || LAYER_COLORS['material']
-      const radius = 25
+      
+      // 根据地形类型决定形状
+      const isUrbanTerrain = ['city', 'village', 'ruins'].includes(loc.terrain || '')
+      const isNaturalTerrain = ['mountain', 'forest', 'ocean', 'river', 'plains', 'desert', 'swamp', 'snow', 'volcano', 'cave', 'abyss'].includes(loc.terrain || '')
+      const isSkyTerrain = loc.terrain === 'sky'
+      
+      const size = 24
+      const halfSize = size / 2
 
-      // 绘制手绘风格圆
-      rc.circle(pos.x, pos.y, radius * 2, {
-        stroke: colors.stroke,
-        fill: colors.fill,
-        fillStyle: 'solid',
-        strokeWidth: 2,
-      })
+      if (isUrbanTerrain) {
+        // 城市类地点：绘制方形
+        rc.rectangle(pos.x - halfSize, pos.y - halfSize, size, size, {
+          stroke: colors.stroke,
+          fill: colors.fill,
+          fillStyle: 'solid',
+          strokeWidth: 2,
+          bowing: 1,
+        })
+      } else if (isNaturalTerrain || isSkyTerrain) {
+        // 自然/天空类地点：绘制圆形
+        rc.circle(pos.x, pos.y, halfSize * 1.2, {
+          stroke: colors.stroke,
+          fill: colors.fill,
+          fillStyle: 'solid',
+          strokeWidth: 2,
+        })
+      } else {
+        // 默认：绘制菱形
+        rc.linearPath([
+          [pos.x, pos.y - halfSize],
+          [pos.x + halfSize, pos.y],
+          [pos.x, pos.y + halfSize],
+          [pos.x - halfSize, pos.y],
+          [pos.x, pos.y - halfSize],
+        ], {
+          stroke: colors.stroke,
+          fill: colors.fill,
+          fillStyle: 'solid',
+          strokeWidth: 2,
+          bowing: 1,
+        })
+      }
 
       // 绘制地点名称
-      ctx.font = '12px sans-serif'
+      ctx.font = '11px sans-serif'
       ctx.textAlign = 'center'
       ctx.fillStyle = '#374151'
-      ctx.fillText(loc.name.slice(0, 6), pos.x, pos.y + 4)
+      
+      // 如果名称过长，截断显示
+      const displayName = loc.name.length > 5 ? loc.name.slice(0, 5) + '...' : loc.name
+      ctx.fillText(displayName, pos.x, pos.y + halfSize + 14)
+      
+      // 显示地形类型缩写
+      if (loc.terrain) {
+        ctx.font = '9px sans-serif'
+        ctx.fillStyle = '#6b7280'
+        ctx.fillText(loc.terrain, pos.x, pos.y + halfSize + 25)
+      }
     })
+
+    // 绘制图例
+    const legendX = width - 120
+    const legendY = 20
+    
+    ctx.font = 'bold 10px sans-serif'
+    ctx.fillStyle = '#374151'
+    ctx.textAlign = 'left'
+    ctx.fillText('形状含义:', legendX, legendY)
+    
+    ctx.font = '9px sans-serif'
+    // 方形 = 城市
+    rc.rectangle(legendX, legendY + 8, 10, 10, {
+      stroke: '#666',
+      fill: '#ddd',
+      strokeWidth: 1,
+    })
+    ctx.fillText('城市/村落', legendX + 16, legendY + 17)
+    
+    // 圆形 = 自然
+    rc.circle(legendX + 5, legendY + 32, 5, {
+      stroke: '#666',
+      fill: '#ddd',
+      strokeWidth: 1,
+    })
+    ctx.fillText('自然地形', legendX + 16, legendY + 35)
+    
+    // 菱形 = 其他
+    rc.linearPath([
+      [legendX + 5, legendY + 44],
+      [legendX + 10, legendY + 49],
+      [legendX + 5, legendY + 54],
+      [legendX, legendY + 49],
+    ], {
+      stroke: '#666',
+      fill: '#ddd',
+      strokeWidth: 1,
+    })
+    ctx.fillText('其他地点', legendX + 16, legendY + 52)
 
   }, [locations])
 
@@ -148,10 +258,10 @@ function RoughMap({ locations }: { locations: Location[] }) {
       <canvas
         ref={canvasRef}
         width={650}
-        height={500}
+        height={550}
         className="w-full bg-white/50 rounded border"
       />
-      <div className="flex gap-4 mt-3 text-xs">
+      <div className="flex gap-4 mt-3 text-xs flex-wrap">
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded-full bg-blue-400"></span> 天界
         </span>
@@ -163,6 +273,9 @@ function RoughMap({ locations }: { locations: Location[] }) {
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded-full bg-purple-400"></span> 秘境
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-gray-600"></span> 虚空
         </span>
       </div>
     </div>

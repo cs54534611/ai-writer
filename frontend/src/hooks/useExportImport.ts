@@ -222,3 +222,39 @@ function downloadTextFile(content: string, filename: string) {
   window.URL.revokeObjectURL(url)
   document.body.removeChild(a)
 }
+
+export function useExportPDF() {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const exportProjectPDF = useCallback(async (projectId: string): Promise<void> => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await fetch(`${API_BASE}/projects/${projectId}/export-pdf`)
+      if (!response.ok) throw new Error('Failed to export PDF')
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${projectId}_export.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      setError(message)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  return {
+    loading,
+    error,
+    exportProjectPDF,
+  }
+}

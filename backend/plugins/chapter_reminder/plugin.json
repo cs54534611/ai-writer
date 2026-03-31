@@ -1,0 +1,8 @@
+{
+  "id": "chapter_reminder",
+  "name": "章节完成提醒",
+  "version": "1.0.0",
+  "description": "章节完成时打印鼓励性提示语到日志，激励作者继续创作",
+  "author": "AIWriter Team",
+  "hooks": ["on_chapter_complete"]
+}

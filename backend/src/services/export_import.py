@@ -881,6 +881,196 @@ class ExportImportService:
         except Exception as e:
             raise Exception(f"导出 Word 文档失败: {str(e)}")
 
+    async def export_project_as_pdf(self, project_id: str) -> dict:
+        """
+        导出项目为 PDF 格式（使用 reportlab）
+        
+        封面：项目名称 + 题材 + 目标字数
+        正文：第一章~第N章：标题 + 正文
+        
+        Args:
+            project_id: 项目ID
+        
+        Returns:
+            dict: 包含 PDF 文件二进制数据的导出结果
+        """
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import cm
+            from reportlab.lib.colors import HexColor
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
+            from io import BytesIO
+            
+            project_dir = self.settings.home_dir / ".aiwriter" / "projects" / project_id
+            
+            if not project_dir.exists():
+                return {
+                    "success": False,
+                    "error": f"项目目录不存在: {project_dir}",
+                }
+            
+            # 读取项目信息
+            project_file = project_dir / "project.json"
+            project_info = {}
+            if project_file.exists():
+                with open(project_file, "r", encoding="utf-8") as f:
+                    project_info = json.load(f)
+            
+            project_name = project_info.get("title", project_id)
+            genre = project_info.get("genre", "未知题材")
+            target_word_count = project_info.get("target_word_count", 0)
+            
+            # 读取章节数据
+            chapters_file = project_dir / "chapters.json"
+            chapters_data = []
+            if chapters_file.exists():
+                with open(chapters_file, "r", encoding="utf-8") as f:
+                    chapters_data = json.load(f)
+                if isinstance(chapters_data, dict):
+                    chapters_data = chapters_data.get("items", [])
+            
+            # 按 order 排序
+            chapters_data.sort(key=lambda x: x.get("order", 0))
+            
+            # 创建 PDF
+            pdf_stream = BytesIO()
+            doc = SimpleDocTemplate(
+                pdf_stream,
+                pagesize=A4,
+                rightMargin=2*cm,
+                leftMargin=2*cm,
+                topMargin=2*cm,
+                bottomMargin=2*cm,
+            )
+            
+            # 样式
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Title'],
+                fontSize=24,
+                spaceAfter=30,
+                alignment=1,  # 居中
+            )
+            subtitle_style = ParagraphStyle(
+                'CustomSubtitle',
+                parent=styles['Normal'],
+                fontSize=12,
+                spaceAfter=12,
+                alignment=1,
+                textColor=HexColor('#666666'),
+            )
+            chapter_title_style = ParagraphStyle(
+                'ChapterTitle',
+                parent=styles['Heading1'],
+                fontSize=18,
+                spaceBefore=20,
+                spaceAfter=20,
+                alignment=1,
+            )
+            body_style = ParagraphStyle(
+                'BodyText',
+                parent=styles['Normal'],
+                fontSize=11,
+                leading=16,
+                spaceBefore=6,
+                spaceAfter=6,
+                alignment=4,  # 两端对齐
+            )
+            
+            story = []
+            
+            # ===== 封面 =====
+            story.append(Spacer(1, 5*cm))
+            story.append(Paragraph(project_name, title_style))
+            story.append(Spacer(1, 1*cm))
+            story.append(Paragraph(f"题材：{genre}", subtitle_style))
+            if target_word_count:
+                story.append(Paragraph(f"目标字数：{target_word_count:,} 字", subtitle_style))
+            story.append(Paragraph(f"共 {len(chapters_data)} 章", subtitle_style))
+            story.append(Spacer(1, 3*cm))
+            
+            # 统计总字数
+            total_words = sum(len(ch.get("content", "")) for ch in chapters_data)
+            story.append(Paragraph(f"当前已完成字数：{total_words:,} 字", subtitle_style))
+            
+            # 添加章节列表
+            if chapters_data:
+                story.append(Spacer(1, 2*cm))
+                toc_data = []
+                for i, ch in enumerate(chapters_data, 1):
+                    ch_title = ch.get("title", f"第{i}章")
+                    ch_words = len(ch.get("content", ""))
+                    toc_data.append([str(i), ch_title, f"{ch_words}字"])
+                
+                toc_table = Table(toc_data, colWidths=[2*cm, 10*cm, 3*cm])
+                toc_table.setStyle(TableStyle([
+                    ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 10),
+                    ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+                    ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
+                    ('TEXTCOLOR', (0, 0), (-1, -1), HexColor('#333333')),
+                    ('LINEBELOW', (0, 0), (-1, -2), 0.5, HexColor('#cccccc')),
+                ]))
+                story.append(toc_table)
+            
+            story.append(PageBreak())
+            
+            # ===== 正文 =====
+            for i, chapter in enumerate(chapters_data):
+                ch_title = chapter.get("title", f"第{i+1}章")
+                ch_content = chapter.get("content", "")
+                
+                # 章节标题
+                story.append(Paragraph(ch_title, chapter_title_style))
+                story.append(Spacer(1, 0.5*cm))
+                
+                # 正文段落
+                if ch_content:
+                    paragraphs = ch_content.split("\n")
+                    for para_text in paragraphs:
+                        para_text = para_text.strip()
+                        if not para_text:
+                            continue
+                        # 跳过 Markdown 标题格式
+                        if para_text.startswith('#'):
+                            continue
+                        # 处理粗体/斜体标记（简化处理）
+                        para_text = para_text.replace('**', '')
+                        para_text = para_text.replace('*', '')
+                        story.append(Paragraph(para_text, body_style))
+                else:
+                    story.append(Paragraph("（本章暂无内容）", body_style))
+                
+                story.append(Spacer(1, 1*cm))
+                
+                # 章节之间加分页（最后一章除外）
+                if i < len(chapters_data) - 1:
+                    story.append(PageBreak())
+            
+            # 构建 PDF
+            doc.build(story)
+            pdf_stream.seek(0)
+            
+            return {
+                "success": True,
+                "format": "pdf",
+                "data": pdf_stream.getvalue(),
+                "filename": f"{project_name}_{datetime.now().strftime('%Y%m%d')}.pdf",
+            }
+            
+        except ImportError:
+            return {
+                "success": False,
+                "error": "请安装 reportlab: pip install reportlab",
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"导出 PDF 失败: {str(e)}",
+            }
+
 
 # 全局服务实例
 _export_import_service: Optional[ExportImportService] = None
