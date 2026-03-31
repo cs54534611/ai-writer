@@ -1,6 +1,6 @@
 """AI 写作服务 - 续写/扩写/改写/描写增强/即时反馈"""
 
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
 from src.services.llm import BaseLLMService
 
@@ -204,6 +204,8 @@ class WritingService:
         context: str,
         style: str = "default",
         num_versions: int = 1,
+        project_id: Optional[str] = None,
+        use_rag: bool = True,
     ) -> list[dict]:
         """
         AI 续写 - 生成一个或多个版本供选择
@@ -212,19 +214,46 @@ class WritingService:
             context: 前文内容
             style: 续写风格 (default/dialog_heavy/desc_heavy/fastpaced/slowpaced)
             num_versions: 生成版本数量 (1-3)
+            project_id: 项目ID（用于RAG检索）
+            use_rag: 是否使用RAG检索相关章节片段作为上下文
 
         Returns:
             list[dict]: 续写结果列表，每个包含 {version, content}
         """
         num_versions = max(1, min(3, num_versions))
 
+        # RAG: 检索相关章节片段作为额外上下文
+        rag_context = ""
+        if use_rag and project_id:
+            try:
+                from src.services.chapter_vector import get_chapter_vector_service
+
+                chapter_service = get_chapter_vector_service()
+                similar_chunks = await chapter_service.search_similar_chapters(
+                    project_id=project_id,
+                    query=context,
+                    top_k=5,
+                )
+                if similar_chunks:
+                    rag_context = "\n\n【相关章节片段】\n" + "\n---\n".join(
+                        chunk["text"] for chunk in similar_chunks
+                    )
+            except Exception:
+                # RAG 失败不影响主流程
+                pass
+
+        # 构建完整上下文
+        full_context = context
+        if rag_context:
+            full_context = f"{context}\n{rag_context}"
+
         if num_versions == 1:
-            prompt = self._build_continue_prompt(context, style)
+            prompt = self._build_continue_prompt(full_context, style)
             content = await self.llm.generate(prompt)
             return [{"version": 1, "content": content.strip()}]
 
         # 多版本
-        prompt = self._build_continue_multi_prompt(context, style, num_versions)
+        prompt = self._build_continue_multi_prompt(full_context, style, num_versions)
         raw = await self.llm.generate(prompt)
 
         results = []
@@ -254,6 +283,8 @@ class WritingService:
         self,
         context: str,
         style: str = "default",
+        project_id: Optional[str] = None,
+        use_rag: bool = True,
     ) -> AsyncIterator[str]:
         """
         AI 续写 - 流式版本
@@ -261,11 +292,38 @@ class WritingService:
         Args:
             context: 前文内容
             style: 续写风格
+            project_id: 项目ID（用于RAG检索）
+            use_rag: 是否使用RAG检索相关章节片段作为上下文
 
         Yields:
             str: 续写内容的 token
         """
-        prompt = self._build_continue_prompt(context, style)
+        # RAG: 检索相关章节片段作为额外上下文
+        rag_context = ""
+        if use_rag and project_id:
+            try:
+                from src.services.chapter_vector import get_chapter_vector_service
+
+                chapter_service = get_chapter_vector_service()
+                similar_chunks = await chapter_service.search_similar_chapters(
+                    project_id=project_id,
+                    query=context,
+                    top_k=5,
+                )
+                if similar_chunks:
+                    rag_context = "\n\n【相关章节片段】\n" + "\n---\n".join(
+                        chunk["text"] for chunk in similar_chunks
+                    )
+            except Exception:
+                # RAG 失败不影响主流程
+                pass
+
+        # 构建完整上下文
+        full_context = context
+        if rag_context:
+            full_context = f"{context}\n{rag_context}"
+
+        prompt = self._build_continue_prompt(full_context, style)
         async for token in self.llm.stream_generate(prompt):
             yield token
 
