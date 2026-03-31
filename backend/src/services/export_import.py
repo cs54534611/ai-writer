@@ -414,6 +414,219 @@ class ExportImportService:
                 "error": f"批量导入章节失败: {str(e)}",
             }
 
+    async def export_world_settings(self, project_id: str, format: str = "md") -> dict:
+        """
+        导出项目设定集
+        
+        Args:
+            project_id: 项目ID
+            format: 导出格式 ('md' 或 'json')
+        
+        Returns:
+            dict: 导出结果
+        """
+        try:
+            project_dir = self.settings.home_dir / ".aiwriter" / "projects" / project_id
+            
+            if not project_dir.exists():
+                return {
+                    "success": False,
+                    "error": f"项目目录不存在: {project_dir}",
+                }
+            
+            # 读取设定数据
+            world_settings_file = project_dir / "world_settings.json"
+            if not world_settings_file.exists():
+                return {
+                    "success": False,
+                    "error": "项目没有设定集数据",
+                }
+            
+            with open(world_settings_file, "r", encoding="utf-8") as f:
+                world_settings = json.load(f)
+            
+            if isinstance(world_settings, dict):
+                settings_list = world_settings.get("items", [world_settings])
+            else:
+                settings_list = world_settings
+            
+            # 按类别分组
+            categorized = {}
+            for setting in settings_list:
+                category = setting.get("category", "other")
+                if category not in categorized:
+                    categorized[category] = []
+                categorized[category].append(setting)
+            
+            if format == "json":
+                return {
+                    "success": True,
+                    "format": "json",
+                    "data": {
+                        "project_id": project_id,
+                        "exported_at": datetime.now().isoformat(),
+                        "categories": categorized,
+                        "total_count": len(settings_list),
+                    },
+                }
+            else:
+                # Markdown 格式
+                md_lines = [f"# {project_id} 世界设定集\n"]
+                md_lines.append(f"> 导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                md_lines.append(f"> 共 {len(settings_list)} 项设定\n")
+                md_lines.append("")
+                
+                # 按类别输出
+                category_names = {
+                    "character": "人物",
+                    "location": "地点",
+                    "item": "物品",
+                    "organization": "组织",
+                    "concept": "概念",
+                }
+                
+                for category, settings in categorized.items():
+                    category_name = category_names.get(category, category)
+                    md_lines.append(f"## {category_name}\n")
+                    
+                    for setting in settings:
+                        name = setting.get("name", "未命名")
+                        content = setting.get("content", "")
+                        md_lines.append(f"### {name}\n")
+                        if content:
+                            md_lines.append(f"{content}\n")
+                        else:
+                            md_lines.append("_暂无内容_\n")
+                        md_lines.append("")
+                    
+                    md_lines.append("---\n")
+                
+                return {
+                    "success": True,
+                    "format": "markdown",
+                    "data": {
+                        "project_id": project_id,
+                        "content": "\n".join(md_lines),
+                        "total_count": len(settings_list),
+                    },
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"导出设定集失败: {str(e)}",
+            }
+
+    async def export_chapter_as_text(self, chapter_id: str) -> dict:
+        """
+        导出章节为纯文本 TXT（去除 Markdown 格式）
+        
+        Args:
+            chapter_id: 章节ID
+        
+        Returns:
+            dict: 包含纯文本内容的导出结果
+        """
+        import re
+        
+        try:
+            chapter = await self._get_chapter(chapter_id)
+            if not chapter:
+                return {
+                    "success": False,
+                    "error": f"章节 {chapter_id} 未找到",
+                }
+            
+            project_id = chapter.get("project_id")
+            title = chapter.get("title", "无标题")
+            content = chapter.get("content", "")
+            
+            # 去除 Markdown 格式
+            text_content = content
+            
+            # 去除 # 标题标记
+            text_content = re.sub(r'^#{1,6}\s+', '', text_content, flags=re.MULTILINE)
+            # 去除 ** 粗体
+            text_content = re.sub(r'\*\*(.*?)\*\*', r'\1', text_content)
+            # 去除 * 斜体
+            text_content = re.sub(r'\*(.*?)\*', r'\1', text_content)
+            # 去除 ~~ 删除线
+            text_content = re.sub(r'~~(.*?)~~', r'\1', text_content)
+            # 去除 ` 行内代码
+            text_content = re.sub(r'`(.*?)`', r'\1', text_content)
+            # 去除 [链接](url) 转为链接文字
+            text_content = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', text_content)
+            # 去除图片语法
+            text_content = re.sub(r'!\[.*?\]\(.*?\)', '', text_content)
+            # 去除列表标记
+            text_content = re.sub(r'^[\s]*[-*+]\s+', '', text_content, flags=re.MULTILINE)
+            text_content = re.sub(r'^[\s]*\d+\.\s+', '', text_content, flags=re.MULTILINE)
+            # 去除引用标记
+            text_content = re.sub(r'^>\s+', '', text_content, flags=re.MULTILINE)
+            # 去除水平线
+            text_content = re.sub(r'^[-*_]{3,}$', '', text_content, flags=re.MULTILINE)
+            # 去除多余空行
+            text_content = re.sub(r'\n{3,}', '\n\n', text_content)
+            
+            return {
+                "success": True,
+                "format": "txt",
+                "data": {
+                    "chapter_id": chapter_id,
+                    "project_id": project_id,
+                    "title": title,
+                    "content": text_content.strip(),
+                },
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"导出纯文本失败: {str(e)}",
+            }
+
+    async def export_chapter_as_json(self, chapter_id: str) -> dict:
+        """
+        导出章节为结构化 JSON 格式
+        
+        Args:
+            chapter_id: 章节ID
+        
+        Returns:
+            dict: 包含结构化 JSON 的导出结果
+        """
+        try:
+            chapter = await self._get_chapter(chapter_id)
+            if not chapter:
+                return {
+                    "success": False,
+                    "error": f"章节 {chapter_id} 未找到",
+                }
+            
+            return {
+                "success": True,
+                "format": "json",
+                "data": {
+                    "chapter_id": chapter_id,
+                    "project_id": chapter.get("project_id"),
+                    "title": chapter.get("title", "无标题"),
+                    "content": chapter.get("content", ""),
+                    "summary": chapter.get("summary", ""),
+                    "notes": chapter.get("notes", ""),
+                    "word_count": len(chapter.get("content", "")),
+                    "characters": chapter.get("characters", []),
+                    "order": chapter.get("order", 0),
+                    "created_at": chapter.get("created_at", ""),
+                    "updated_at": chapter.get("updated_at", ""),
+                },
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"导出 JSON 失败: {str(e)}",
+            }
+
 
 # 全局服务实例
 _export_import_service: Optional[ExportImportService] = None

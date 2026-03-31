@@ -16,7 +16,9 @@ from src.schemas.relationship import (
     RelationshipGraphResponse,
     RelationshipGraphNode,
     RelationshipGraphLink,
+    SuggestRelationshipRequest,
 )
+from src.services.relationship_suggestion import get_relationship_suggestion_service
 
 router = APIRouter()
 
@@ -177,3 +179,28 @@ async def delete_relationship(
     
     await db.delete(relationship)
     await db.flush()
+
+
+@router.post("/suggest")
+async def suggest_relationship(
+    project_id: Annotated[str, Path(description="项目ID")],
+    request: SuggestRelationshipRequest,
+) -> dict:
+    """AI 建议两个角色之间的关系类型
+    
+    根据两个角色的背景信息，AI 分析并推荐最合适的关系类型。
+    
+    - **char1_id**: 角色1的ID
+    - **char2_id**: 角色2的ID
+    
+    返回建议的关系类型、理由和置信度。
+    """
+    service = get_relationship_suggestion_service()
+    
+    # 获取角色信息
+    char1_profile = request.char1_profile
+    char2_profile = request.char2_profile
+    
+    result = await service.suggest_relationship(char1_profile, char2_profile)
+    
+    return result

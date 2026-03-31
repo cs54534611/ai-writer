@@ -9,6 +9,8 @@ from src.api.inspirations import router as inspirations_router
 from src.api.outlines import router as outlines_router
 from src.api.world_settings import router as world_settings_router
 from src.api.locations import router as locations_router
+from src.api.factions import router as factions_router
+from src.api.timeline_events import router as timeline_events_router
 from src.api.chapters import router as chapters_router
 from src.api.writing import router as writing_router
 from src.api.reviews import router as reviews_router
@@ -47,6 +49,12 @@ api_router.include_router(world_settings_router, prefix="/projects/{project_id}/
 
 # 地点/地图
 api_router.include_router(locations_router, prefix="/projects/{project_id}/locations", tags=["locations"])
+
+# 势力管理
+api_router.include_router(factions_router, prefix="/projects/{project_id}/factions", tags=["factions"])
+
+# 时间线事件
+api_router.include_router(timeline_events_router, prefix="/projects/{project_id}/timeline-events", tags=["timeline_events"])
 
 # 章节管理 + AI 写作
 api_router.include_router(chapters_router, prefix="/projects/{project_id}/chapters", tags=["chapters"])

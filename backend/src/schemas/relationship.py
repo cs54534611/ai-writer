@@ -127,3 +127,13 @@ class RelationshipGraphResponse(BaseModel):
     """关系图数据响应（用于D3.js力导向图）"""
     nodes: list[RelationshipGraphNode]
     links: list[RelationshipGraphLink]
+
+
+class SuggestRelationshipRequest(BaseModel):
+    """AI 建议关系请求"""
+    char1_profile: dict = Field(
+        description="角色1的 profile，包含 name, background, personality 等字段"
+    )
+    char2_profile: dict = Field(
+        description="角色2的 profile，包含 name, background, personality 等字段"
+    )

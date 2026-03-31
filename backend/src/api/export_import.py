@@ -140,3 +140,73 @@ async def export_chapter_markdown(
         )
 
     return JSONResponse(content=result)
+
+
+@router.get("/chapters/{chapter_id}/export-text")
+async def export_chapter_text(
+    chapter_id: Annotated[str, Path(description="章节ID")],
+):
+    """
+    导出单个章节为纯文本 TXT（去除 Markdown 格式）
+    """
+    service = get_export_import_service()
+    
+    result = await service.export_chapter_as_text(chapter_id)
+    
+    if not result.get("success", False):
+        return JSONResponse(
+            status_code=400,
+            content=result,
+        )
+
+    return JSONResponse(content=result)
+
+
+@router.get("/chapters/{chapter_id}/export-json")
+async def export_chapter_json(
+    chapter_id: Annotated[str, Path(description="章节ID")],
+):
+    """
+    导出单个章节为结构化 JSON 格式
+    """
+    service = get_export_import_service()
+    
+    result = await service.export_chapter_as_json(chapter_id)
+    
+    if not result.get("success", False):
+        return JSONResponse(
+            status_code=400,
+            content=result,
+        )
+
+    return JSONResponse(content=result)
+
+
+@router.get("/projects/{project_id}/world-settings/export")
+async def export_world_settings(
+    project_id: Annotated[str, Path(description="项目ID")],
+    format: Annotated[str, Query(description="导出格式: md, json")] = "md",
+):
+    """
+    导出项目设定集
+    
+    - format=md: 返回 Markdown 格式（按类别分组）
+    - format=json: 返回 JSON 格式
+    """
+    service = get_export_import_service()
+    
+    if format not in ("md", "json"):
+        raise HTTPException(
+            status_code=400,
+            detail="format must be one of: md, json",
+        )
+    
+    result = await service.export_world_settings(project_id, format)
+    
+    if not result.get("success", False):
+        return JSONResponse(
+            status_code=400,
+            content=result,
+        )
+    
+    return JSONResponse(content=result)
