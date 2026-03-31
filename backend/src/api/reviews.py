@@ -167,24 +167,14 @@ async def full_review(
     根据章节ID获取内容后进行完整审查
     """
     # 获取章节内容
-    result = await db.execute(
-        select(Character).where(
-            Character.id == request.chapter_id,
-            Character.project_id == project_id,
-        )
-    )
-    chapter = result.scalar_one_or_none()
-
-    # 注意：这里应该用 Chapter 模型，但为了避免导入问题，使用 Character 查询
-    # 实际上应该用 Chapter 来查询
     from src.models.chapter import Chapter
-    chapter_result = await db.execute(
+    result = await db.execute(
         select(Chapter).where(
             Chapter.id == request.chapter_id,
             Chapter.project_id == project_id,
         )
     )
-    chapter = chapter_result.scalar_one_or_none()
+    chapter = result.scalar_one_or_none()
 
     if not chapter:
         raise HTTPException(

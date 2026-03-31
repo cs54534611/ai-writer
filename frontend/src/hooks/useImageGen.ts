@@ -58,6 +58,9 @@ export function useGenerateImage() {
     onSuccess: ({ projectId }) => {
       qc.invalidateQueries({ queryKey: ['project-images', projectId] })
     },
+    onError: (err, { projectId }) => {
+      console.error(`[useGenerateImage] 生成图片失败:`, err)
+    },
   })
 }
 
@@ -65,6 +68,9 @@ export function useGetCharacterImage() {
   return useMutation({
     mutationFn: async ({ projectId, characterId }: { projectId: string; characterId: string }) =>
       fetchJSON(`${API}/projects/${projectId}/characters/${characterId}/image`),
+    onError: (err, { projectId, characterId }) => {
+      console.error(`[useGetCharacterImage] 获取角色图片失败:`, err)
+    },
   })
 }
 
@@ -80,6 +86,9 @@ export function useApplyImageToCharacter() {
       qc.invalidateQueries({ queryKey: ['character', projectId, characterId] })
       qc.invalidateQueries({ queryKey: ['characters', projectId] })
     },
+    onError: (err, { projectId, characterId }) => {
+      console.error(`[useApplyImageToCharacter] 应用角色图片失败:`, err)
+    },
   })
 }
 
@@ -90,6 +99,9 @@ export function useDeleteImage() {
       fetchJSON(`${API}/projects/${projectId}/images/${imageId}`, { method: 'DELETE' }),
     onSuccess: (_, { projectId }) => {
       qc.invalidateQueries({ queryKey: ['project-images', projectId] })
+    },
+    onError: (err, { projectId }) => {
+      console.error(`[useDeleteImage] 删除图片失败:`, err)
     },
   })
 }

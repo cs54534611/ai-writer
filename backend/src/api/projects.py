@@ -1,7 +1,7 @@
 """项目 CRUD API 路由"""
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Path
 from sqlmodel import select
@@ -21,12 +21,12 @@ router = APIRouter()
 
 async def get_project_db(
     project_id: Annotated[str, Path(description="项目ID")]
-) -> AsyncGenerator[AsyncSession, None]:
+) -> AsyncIterator[AsyncSession]:
     """获取项目数据库会话的依赖"""
     db_manager = get_db_manager()
     if project_id not in db_manager._engines:
         await db_manager.init_project_db(project_id)
-    
+
     engine = db_manager._engines[project_id]
     session = AsyncSession(engine, expire_on_commit=False)
     try:

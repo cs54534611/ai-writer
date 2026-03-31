@@ -44,6 +44,9 @@ export function useReviewChapter() {
     onSuccess: (_, { projectId }) => {
       qc.invalidateQueries({ queryKey: ['chapters', projectId] })
     },
+    onError: (err, { projectId }) => {
+      console.error(`[useReviewChapter] 审查章节失败:`, err)
+    },
   })
 }
 
@@ -55,6 +58,9 @@ export function useCheckSensitive() {
         method: 'POST',
         body: JSON.stringify({ project_id: projectId, content, custom_words: customWords }),
       }),
+    onError: (err, { projectId }) => {
+      console.error(`[useCheckSensitive] 检查敏感词失败:`, err)
+    },
   })
 }
 
@@ -66,6 +72,9 @@ export function useCheckOOC() {
         method: 'POST',
         body: JSON.stringify({ project_id: projectId, content, character_id: characterId }),
       }),
+    onError: (err, { projectId }) => {
+      console.error(`[useCheckOOC] 检查角色 OOC 失败:`, err)
+    },
   })
 }
 

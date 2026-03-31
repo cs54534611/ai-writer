@@ -61,6 +61,9 @@ export function useImportFandom() {
     onSuccess: ({ projectId }) => {
       qc.invalidateQueries({ queryKey: ['fandom-sources', projectId] })
     },
+    onError: (err, { projectId }) => {
+      console.error(`[useImportFandom] 导入同人设定失败:`, err)
+    },
   })
 }
 
@@ -89,6 +92,9 @@ export function useGenerateFandomOutline() {
     onSuccess: ({ projectId, sourceId }) => {
       qc.invalidateQueries({ queryKey: ['fandom-source', projectId, sourceId] })
     },
+    onError: (err, { projectId, sourceId }) => {
+      console.error(`[useGenerateFandomOutline] 生成同人大纲失败:`, err)
+    },
   })
 }
 
@@ -114,6 +120,9 @@ export function useCreateProjectFromFandom() {
       qc.invalidateQueries({ queryKey: ['projects'] })
       qc.invalidateQueries({ queryKey: ['project', projectId] })
     },
+    onError: (err, { projectId }) => {
+      console.error(`[useCreateProjectFromFandom] 从同人创建项目失败:`, err)
+    },
   })
 }
 
@@ -124,6 +133,9 @@ export function useDeleteFandomSource() {
       fetchJSON(`${API}/projects/${projectId}/fandom/sources/${sourceId}`, { method: 'DELETE' }),
     onSuccess: (_, { projectId }) => {
       qc.invalidateQueries({ queryKey: ['fandom-sources', projectId] })
+    },
+    onError: (err, { projectId }) => {
+      console.error(`[useDeleteFandomSource] 删除同人设定失败:`, err)
     },
   })
 }

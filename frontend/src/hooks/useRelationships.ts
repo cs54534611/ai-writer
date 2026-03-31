@@ -42,6 +42,9 @@ export function useCreateRelationship() {
       }),
     onSuccess: (data) =>
       qc.invalidateQueries({ queryKey: ['relationships', data.project_id] }),
+    onError: (err, { project_id }) => {
+      console.error(`[useCreateRelationship] 创建关系失败:`, err)
+    },
   })
 }
 
@@ -52,5 +55,8 @@ export function useDeleteRelationship() {
       fetchJSON(`${API}/projects/${projectId}/relationships/${id}`, { method: 'DELETE' }),
     onSuccess: (_, { projectId }) =>
       qc.invalidateQueries({ queryKey: ['relationships', projectId] }),
+    onError: (err, { projectId }) => {
+      console.error(`[useDeleteRelationship] 删除关系失败:`, err)
+    },
   })
 }

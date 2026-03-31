@@ -16,6 +16,7 @@ from src.api.image_gen import router as image_gen_router
 from src.api.fandom import router as fandom_router
 from src.api.plugins import router as plugins_router
 from src.api.export_import import router as export_import_router
+from src.api.sensitive_words import router as sensitive_words_router
 
 api_router = APIRouter()
 
@@ -60,5 +61,8 @@ api_router.include_router(image_gen_router, prefix="/projects/{project_id}/image
 
 # 同人创作
 api_router.include_router(fandom_router, prefix="/projects/{project_id}/fandom", tags=["fandom"])
+
+# 敏感词管理
+api_router.include_router(sensitive_words_router, prefix="/projects/{project_id}/sensitive-words", tags=["sensitive_words"])
 
 __all__ = ["api_router"]
